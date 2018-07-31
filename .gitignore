@@ -50,3 +50,8 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# z88dk files
+zcc_opt.def
+*.COM
+*.bin
