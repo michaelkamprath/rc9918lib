@@ -210,6 +210,15 @@ void tmsWriteGeneratorTable(
 	tmsWriteToVRAM( context, data, byte_count, VRAM_ADDR_GENERATOR_TABLE(c) );
 }
 
+void tmsWriteGeneratorTableEntry( 
+	const void* context,
+	const unsigned char* data,
+	unsigned int entryIndex
+) {
+	RC9918Context* c = (RC9918Context*)context;
+	tmsWriteToVRAM( context, data, 8, VRAM_ADDR_GENERATOR_TABLE(c) + entryIndex*8 );
+}
+
 void tmsWriteText( const void* context, unsigned char xpos, unsigned char ypos, const unsigned char* str )
 {
 	const RC9918Context* c = (const RC9918Context*)context;
@@ -302,7 +311,7 @@ void tmsSetTextModeForegroundColor( void* context, unsigned char color )
 
 const unsigned char TMS_GMODE1_REGISTER_TABLE[8] = { 0x00, 0xC3, 0x02, 0x2C, 0x00, 0x18, 0x04, 0x01 };
 
-void tmsSetBitmapGraphicsMode( void* context ) 
+void tmsSetGraphicsMode( void* context ) 
 {
 	RC9918Context* c = (RC9918Context*)context;
 
@@ -326,8 +335,15 @@ void tmsSetBitmapGraphicsMode( void* context )
 	_tmsSetVRAMAddress( c, VRAM_ADDR_COLOR_TABLE(c) );
 	for (int i = 0; i < 32; i++ ) {
 		outp( c->ramPort, 0xF1 );
-		for (int nop = 0; nop < 2; nop++) {;}
 	}
+}
+
+void tmsSetGraphicsModeColorEntry( const void* context, unsigned char color, unsigned int entryIndex )
+{
+	const RC9918Context* c = (const RC9918Context*)context;
+	
+	_tmsSetVRAMAddress( c, VRAM_ADDR_COLOR_TABLE(c) + entryIndex );
+	outp( c->ramPort, color );
 }
 
 #pragma mark - Sprites

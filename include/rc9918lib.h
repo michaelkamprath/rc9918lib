@@ -61,7 +61,10 @@ void tmsWriteToVRAM(	const void* context,
 void tmsWriteGeneratorTable(	const void* context,
 								const unsigned char* data,
 								unsigned int byte_count );
-								
+void tmsWriteGeneratorTableEntry(	const void* context,
+									const unsigned char* data,
+									unsigned int entryIndex );
+
 void tmsSetDefaultFont( void* context );
 void tmsSetTextFont(	void* context,
 						const unsigned char* font_data,
@@ -80,11 +83,11 @@ void tmsSetTextModeBackgroundColor( void* context, unsigned char color );
 void tmsSetTextModeForegroundColor( void* context, unsigned char color );
 
 //
-// Bitmap Graphics Mode
+//  Graphics Mode (Mode 1)
 //
 
-void tmsSetBitmapGraphicsMode( void* context );
-
+void tmsSetGraphicsMode( void* context );
+void tmsSetGraphicsModeColorEntry( const void* context, unsigned char color, unsigned int entryIndex );
 
 //
 // Sprites

@@ -114,8 +114,82 @@ const unsigned char worldSpritePatterns[] = {
         31,127,254,248,112,32,0,0
 };
 
+#define STAR_1A_CHAR	240
+#define STAR_1B_CHAR	248
+#define STAR_2A_CHAR	241
+#define STAR_2B_CHAR	249
 
+#define PATTERN_A_COLOR	0xB1
+#define PATTERN_B_COLOR	0XE1
+
+#define PATTERN_A_TABLE_INDEX	30
+#define PATTERN_B_TABLE_INDEX	31
+
+const unsigned char PATTERN_STAR_1A[8] = { 0, 0, 0x38, 0x38, 0x38, 0, 0, 0 };
+const unsigned char PATTERN_STAR_1B[8] = { 0x10, 0x10, 0x38, 0xFE, 0x38, 0x10, 0x10, 0 };
+
+const unsigned char PATTERN_STAR_2A[8] = { 0, 0x04, 0x0E, 0x04, 0, 0, 0, 0 };
+const unsigned char PATTERN_STAR_2B[8] = { 0x04, 0x04, 0x1F, 0x04, 0x04, 0, 0, 0 };
+
+#define STAR_LOCATION_COUNT	12
+const unsigned char STAR_LOCATIONS[STAR_LOCATION_COUNT*3] = {
+//		x,	y,	char
+		4,	10, STAR_1A_CHAR,
+		8,	18, STAR_1A_CHAR,
+		20,	13, STAR_1A_CHAR,
+		30,	12, STAR_1A_CHAR,
+		2,	9,	STAR_2A_CHAR,
+		3,	18,	STAR_2A_CHAR,
+		7,	15,	STAR_2A_CHAR,
+		15,	17,	STAR_2A_CHAR,
+		16,	11,	STAR_2A_CHAR,
+		22,	13,	STAR_2A_CHAR,
+		24, 18,	STAR_2A_CHAR,
+		29, 15,	STAR_2A_CHAR
+	};
+	
 SpriteAttribute spriteTable[32];
+
+void setUpStaryBackground( void * context ) 
+{
+	// update generator patterns
+	tmsWriteGeneratorTableEntry( context, PATTERN_STAR_1A, STAR_1A_CHAR );
+	tmsWriteGeneratorTableEntry( context, PATTERN_STAR_1B, STAR_1B_CHAR );
+	tmsWriteGeneratorTableEntry( context, PATTERN_STAR_2A, STAR_2A_CHAR );
+	tmsWriteGeneratorTableEntry( context, PATTERN_STAR_2B, STAR_2B_CHAR );
+	
+	tmsSetGraphicsModeColorEntry( context, PATTERN_A_COLOR, PATTERN_A_TABLE_INDEX );
+	tmsSetGraphicsModeColorEntry( context, PATTERN_B_COLOR, PATTERN_B_TABLE_INDEX );
+	
+	// place star on screen
+	
+	for (int i = 0; i < STAR_LOCATION_COUNT; i++ ) {
+		tmsWriteCharacter(
+			context, 
+			STAR_LOCATIONS[i*3],
+			STAR_LOCATIONS[i*3+1],
+			STAR_LOCATIONS[i*3+2]
+		);
+	}
+}
+
+void twinkleOnStarAtIndex( void * context, unsigned int starIndex ) {
+	tmsWriteCharacter(
+			context, 
+			STAR_LOCATIONS[starIndex*3],
+			STAR_LOCATIONS[starIndex*3+1],
+			STAR_LOCATIONS[starIndex*3+2] + 8
+		);
+}
+
+void twinkleOffStarAtIndex( void * context, unsigned int starIndex ) {
+	tmsWriteCharacter(
+			context, 
+			STAR_LOCATIONS[starIndex*3],
+			STAR_LOCATIONS[starIndex*3+1],
+			STAR_LOCATIONS[starIndex*3+2]
+		);
+}
 
 void main( void ) 
 {
@@ -128,7 +202,7 @@ void main( void )
 	}
 	
 	printf("initing graphics mode.\n");
-	tmsSetBitmapGraphicsMode( context );
+	tmsSetGraphicsMode( context );
 
 	// write out column and row headers
 	
@@ -136,7 +210,8 @@ void main( void )
 	
 	sprintf( buffer,"01234567890123456789012345678901");
 	tmsWriteText( context, 0, 0, buffer );
-
+	setUpStaryBackground( context );
+	
 	tmsSetSpritePatterns( context, worldSpritePatterns, 512 );
 
 	for (int i = 0; i < 32; i++ ) {
@@ -152,7 +227,11 @@ void main( void )
 	int idx = 0;
 	int vel = -1;
 	int xpos = 100;
-
+	unsigned int twinkleStar = rand()%STAR_LOCATION_COUNT;
+	char isStarTwinkling = 0;
+	long twinkleTickCounter = 0;
+	long nextStarTwinkleTick = rand()%50 + 100;
+	
 	spriteTable[0].vert_pos = 100,
 	spriteTable[0].properties = 0x03;
 
@@ -187,7 +266,23 @@ void main( void )
 			if (xpos == 255-32) {
 				vel = -1;
 			}
-		}	
+			twinkleTickCounter++;
+			if (twinkleTickCounter == nextStarTwinkleTick )	{
+				if (isStarTwinkling) {
+					twinkleOffStarAtIndex( context, twinkleStar );
+					isStarTwinkling = 0;
+				
+					twinkleStar = rand()%STAR_LOCATION_COUNT;
+				}
+				else {
+					twinkleOnStarAtIndex( context, twinkleStar );
+					isStarTwinkling = 1;
+				}
+				
+				twinkleTickCounter = 0;
+				nextStarTwinkleTick = rand()%50 + 100;
+			}
+		}		
 	}
 	
 	sprintf( buffer, "Done!                    ", idx);
