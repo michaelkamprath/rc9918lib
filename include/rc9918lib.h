@@ -42,6 +42,7 @@
 #define RC9918_DEFAULT_RAMPORT			0x98
 #define RC9918_DEFAULT_REGISTER_PORT	0x99
 
+
 //
 // Initialization and Utility
 //
@@ -57,15 +58,53 @@ void tmsWriteToVRAM(	const void* context,
 						unsigned int byte_count,
 						unsigned int vram_addr );	
 
+void tmsWriteGeneratorTable(	const void* context,
+								const unsigned char* data,
+								unsigned int byte_count );
+								
+void tmsSetDefaultFont( void* context );
+void tmsSetTextFont(	void* context,
+						const unsigned char* font_data,
+						unsigned int font_byte_count );
+void tmsWriteText( const void* context, unsigned char xpos, unsigned char ypos, const unsigned char* str );
+void tmsWriteCharacter( const void* context, unsigned char xpos, unsigned char ypos, unsigned char value );
+
+
+
 //
 // Text Mode
 //
 
 void tmsSetTextMode( void* context );
 void tmsSetTextModeBackgroundColor( void* context, unsigned char color );
-void tmsSetTextModeFont( void* context, const unsigned char* font_data, unsigned int font_byte_count );
-void tmsWriteText( const void* context, unsigned char xpos, unsigned char ypos, const unsigned char* str );
-void tmsWriteCharacter( const void* context, unsigned char xpos, unsigned char ypos, unsigned char value );
+void tmsSetTextModeForegroundColor( void* context, unsigned char color );
+
+//
+// Bitmap Graphics Mode
+//
+
+void tmsSetBitmapGraphicsMode( void* context );
+
+
+//
+// Sprites
+//
+
+typedef struct {
+	unsigned char vert_pos;
+	unsigned char horiz_pos;
+	unsigned char name;
+	unsigned char properties;	// Early Clock and Color
+} SpriteAttribute;
+
+void tmsWriteSpriteAttributes(	const void* context,
+								unsigned int firstSpriteIndex,
+								unsigned int countAttributes,
+								const SpriteAttribute* spriteData );
+
+void tmsSetSpritePatterns(	const void* context,
+							unsigned char* pattern_data,
+							unsigned int data_size );
 
 //
 // DEBUG

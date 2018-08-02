@@ -21,5 +21,6 @@
 #define FONT_MEMORY_SIZE	0x0800
 
 extern const unsigned char default_font_6x8[];
+extern const unsigned char default_font_8x8[];
 
 #endif

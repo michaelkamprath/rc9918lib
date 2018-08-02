@@ -1,4 +1,4 @@
-EXAMPLES = ascii
+EXAMPLES = ascii sprite
 
 INCDIR = include
 SRCDIR = src
@@ -16,9 +16,9 @@ DEPS = $(wildcard include/*.h) $(wildcard src/*.h)
 $(EXAMPLES): $(DEPS)
 	mkdir -p $(EXAMPLEBINDIR)
 	zcc +cpm -vn -I$(INCDIR) -I$(SRCDIR) $(EXAMPLEDIR)/$@.c $(LIB_SRC) -o $(EXAMPLEBINDIR)/$@.bin -create-app
-	rm -f $(EXAMPLEBINS)
 	
 all: $(EXAMPLES)
+	rm -f $(EXAMPLEBINS)
 
 .PHONY: clean
 

@@ -15,6 +15,9 @@
     along with rc9918lib.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+// Original assembly version by J. B. Langston
+// 		https://github.com/jblang/rc9918/blob/master/examples/ascii.asm
+
 #include <stdio.h>
 #include "rc9918lib.h"
 
@@ -25,7 +28,7 @@
 #define CHAR_dblbottomleft	200
 #define CHAR_dblbottomright	188
 
-void setBoarderLineBuffer( char* buffer, char leftChar, char midChar, char rightChar )
+void setBorderLineBuffer( char* buffer, char leftChar, char midChar, char rightChar )
 {
 	buffer[0] = leftChar;	
 	for (int i = 1; i < 39; i++ ) {
@@ -52,8 +55,10 @@ void main( void )
 	tmsSetTextMode( context );
 	tmsSetTextModeBackgroundColor( context, TMSCOLOR_DARK_BLUE );
 	
+	debugPrintContext(context);
+	
 	printf("Printing border\n");
-	setBoarderLineBuffer( lineBuffer, CHAR_dbltopleft, CHAR_dblhorizontal, CHAR_dbltopright );
+	setBorderLineBuffer( lineBuffer, CHAR_dbltopleft, CHAR_dblhorizontal, CHAR_dbltopright );
 	tmsWriteText( context, 0, 0, lineBuffer );
 	
 	for ( int row = 1; row < 23; row++ ) {
@@ -61,7 +66,7 @@ void main( void )
 		tmsWriteCharacter( context, 39, row, CHAR_dblvertical );
 	}
 
-	setBoarderLineBuffer( lineBuffer, CHAR_dblbottomleft, CHAR_dblhorizontal, CHAR_dblbottomright );
+	setBorderLineBuffer( lineBuffer, CHAR_dblbottomleft, CHAR_dblhorizontal, CHAR_dblbottomright );
 	tmsWriteText( context, 0, 23, lineBuffer );
 	
 	printf("Writing string to VRAM = %s\n", title_str);
@@ -71,13 +76,15 @@ void main( void )
 	int padding = 4;
 	int linelength = 40 - (2*padding);
 	int ypos = 6;
-	int i = 0;
-	for ( int c = 0; c <= 255; c++ ) {
-		lineBuffer[i] = c;		
+	int i = 1;
+	// the 0 character terminates a C string. Just print space, as character 0 is empty anyway.
+	lineBuffer[0] = 0x20;
+	for ( int c = 1; c <= 255; c++ ) {
+		lineBuffer[i] = c;
 		i++;
 		if (i >= linelength) {
 			lineBuffer[i] = 0;
-			tmsWriteToVRAM( context, lineBuffer, linelength, ypos*40 + padding );
+			tmsWriteText( context, padding, ypos, lineBuffer );
 			ypos += 2;			
 			if ((ypos >= 22) && (c < 255)) {
 				// too far. just stop. 

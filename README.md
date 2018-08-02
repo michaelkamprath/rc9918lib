@@ -29,3 +29,4 @@ Each call to the library requires that a `context` handle be passed to it, and t
 3. Update library for forthcoming revision 2 of the rc9918 board, notably to enable interrupts.
 4. Update Makefile to allow compile time overriding of `RC9918_CONTEXT_ARRAY_SIZE` value. 
 5. Optimize, optimize, optimize 
+6. Make default fonts optionally compiled to save space is not needed
