@@ -153,18 +153,18 @@ SpriteAttribute spriteTable[32];
 void setUpStaryBackground( void * context ) 
 {
 	// update generator patterns
-	tmsWriteGeneratorTableEntry( context, PATTERN_STAR_1A, STAR_1A_CHAR );
-	tmsWriteGeneratorTableEntry( context, PATTERN_STAR_1B, STAR_1B_CHAR );
-	tmsWriteGeneratorTableEntry( context, PATTERN_STAR_2A, STAR_2A_CHAR );
-	tmsWriteGeneratorTableEntry( context, PATTERN_STAR_2B, STAR_2B_CHAR );
+	vdpCopyToGeneratorTableEntry( context, PATTERN_STAR_1A, STAR_1A_CHAR );
+	vdpCopyToGeneratorTableEntry( context, PATTERN_STAR_1B, STAR_1B_CHAR );
+	vdpCopyToGeneratorTableEntry( context, PATTERN_STAR_2A, STAR_2A_CHAR );
+	vdpCopyToGeneratorTableEntry( context, PATTERN_STAR_2B, STAR_2B_CHAR );
 	
-	tmsSetGraphicsModeColorEntry( context, PATTERN_A_COLOR, PATTERN_A_TABLE_INDEX );
-	tmsSetGraphicsModeColorEntry( context, PATTERN_B_COLOR, PATTERN_B_TABLE_INDEX );
+	vdpSetGraphicsMode1ColorEntry( context, PATTERN_A_COLOR, PATTERN_A_TABLE_INDEX );
+	vdpSetGraphicsMode1ColorEntry( context, PATTERN_B_COLOR, PATTERN_B_TABLE_INDEX );
 	
 	// place star on screen
 	
 	for (int i = 0; i < STAR_LOCATION_COUNT; i++ ) {
-		tmsWriteCharacter(
+		vdpWriteCharacter(
 			context, 
 			STAR_LOCATIONS[i*3],
 			STAR_LOCATIONS[i*3+1],
@@ -174,7 +174,7 @@ void setUpStaryBackground( void * context )
 }
 
 void twinkleOnStarAtIndex( void * context, unsigned int starIndex ) {
-	tmsWriteCharacter(
+	vdpWriteCharacter(
 			context, 
 			STAR_LOCATIONS[starIndex*3],
 			STAR_LOCATIONS[starIndex*3+1],
@@ -183,7 +183,7 @@ void twinkleOnStarAtIndex( void * context, unsigned int starIndex ) {
 }
 
 void twinkleOffStarAtIndex( void * context, unsigned int starIndex ) {
-	tmsWriteCharacter(
+	vdpWriteCharacter(
 			context, 
 			STAR_LOCATIONS[starIndex*3],
 			STAR_LOCATIONS[starIndex*3+1],
@@ -193,8 +193,10 @@ void twinkleOffStarAtIndex( void * context, unsigned int starIndex ) {
 
 void main( void ) 
 {
-	printf("Initing TMS9918\n");
-	void* context = tmsInitBoard( RC9918_DEFAULT_RAMPORT, RC9918_DEFAULT_REGISTER_PORT );
+	srand(time(0));
+	
+	printf("Initing TMS9918A\n");
+	void* context = vdpInitBoard( RC9918_DEFAULT_RAMPORT, RC9918_DEFAULT_REGISTER_PORT );
 	
 	if (context == 0) {
 		printf("ERROR - could not allocated context!");
@@ -202,17 +204,18 @@ void main( void )
 	}
 	
 	printf("initing graphics mode.\n");
-	tmsSetGraphicsMode( context );
-
+	vdpSetGraphicsMode1( context );
+	vdpSetSpriteSizeAndMagnification( context, 1, 1 );
+	
 	// write out column and row headers
 	
 	unsigned char buffer[33];
 	
 	sprintf( buffer,"01234567890123456789012345678901");
-	tmsWriteText( context, 0, 0, buffer );
+	vdpWriteText( context, 0, 0, buffer );
 	setUpStaryBackground( context );
 	
-	tmsSetSpritePatterns( context, worldSpritePatterns, 512 );
+	vdpSetSpritePatterns( context, worldSpritePatterns, 512 );
 
 	for (int i = 0; i < 32; i++ ) {
 		spriteTable[i].vert_pos = 0xFF,
@@ -222,7 +225,7 @@ void main( void )
 		
 	}	
 	
-	tmsWriteSpriteAttributes( context, 0, 32, spriteTable);
+	vdpWriteSpriteAttributes( context, 0, 32, spriteTable);
 	
 	int idx = 0;
 	int vel = -1;
@@ -230,7 +233,7 @@ void main( void )
 	unsigned int twinkleStar = rand()%STAR_LOCATION_COUNT;
 	char isStarTwinkling = 0;
 	long twinkleTickCounter = 0;
-	long nextStarTwinkleTick = rand()%50 + 100;
+	long nextStarTwinkleTick = rand()%100 + 50;
 	
 	spriteTable[0].vert_pos = 100,
 	spriteTable[0].properties = 0x03;
@@ -238,9 +241,9 @@ void main( void )
 	spriteTable[1].vert_pos = 100,
 	spriteTable[1].properties = 0x05;
 	
-	tmsWriteText( context, 0, 2, "frame = " );
+	vdpWriteText( context, 0, 2, "frame = " );
 	
-	for (long i = 0; i < 100000; i++ ) {
+	for (long i = 0; i < 500000; i++ ) {
 	
 		if (i%50 == 0) {
 			spriteTable[0].horiz_pos = xpos;
@@ -250,8 +253,8 @@ void main( void )
 			spriteTable[1].name = idx*8 + 4;
 			
 			sprintf( buffer, "%d", idx );
-			tmsWriteText( context, 8, 2, buffer );
-			tmsWriteSpriteAttributes( context, 0, 2, &spriteTable[0]);
+			vdpWriteText( context, 8, 2, buffer );
+			vdpWriteSpriteAttributes( context, 0, 2, &spriteTable[0]);
 			
 			if (i%200 == 0 ) {
 				idx++;
@@ -280,11 +283,11 @@ void main( void )
 				}
 				
 				twinkleTickCounter = 0;
-				nextStarTwinkleTick = rand()%50 + 100;
+				nextStarTwinkleTick = rand()%100 + 50;
 			}
 		}		
 	}
 	
 	sprintf( buffer, "Done!                    ", idx);
-	tmsWriteText( context, 0, 2, buffer );
+	vdpWriteText( context, 0, 2, buffer );
 }

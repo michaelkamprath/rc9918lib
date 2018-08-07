@@ -43,8 +43,8 @@ void main( void )
 	char lineBuffer[41];
 	const char* title_str = "ASCII Character Set";
 	
-	printf("Initing TMS9918\n");
-	void* context = tmsInitBoard( RC9918_DEFAULT_RAMPORT, RC9918_DEFAULT_REGISTER_PORT );
+	printf("Initing TMS9918A\n");
+	void* context = vdpInitBoard( RC9918_DEFAULT_RAMPORT, RC9918_DEFAULT_REGISTER_PORT );
 	
 	if (context == 0) {
 		printf("ERROR - could not allocated context!");
@@ -52,25 +52,25 @@ void main( void )
 	}
 	
 	printf("initing text mode.\n");
-	tmsSetTextMode( context );
-	tmsSetTextModeBackgroundColor( context, TMSCOLOR_DARK_BLUE );
+	vdpSetTextMode( context );
+	vdpSetTextModeBackgroundColor( context, VDPCOLOR_DARK_BLUE );
 	
 	debugPrintContext(context);
 	
 	printf("Printing border\n");
 	setBorderLineBuffer( lineBuffer, CHAR_dbltopleft, CHAR_dblhorizontal, CHAR_dbltopright );
-	tmsWriteText( context, 0, 0, lineBuffer );
+	vdpWriteText( context, 0, 0, lineBuffer );
 	
 	for ( int row = 1; row < 23; row++ ) {
-		tmsWriteCharacter( context, 0, row, CHAR_dblvertical );
-		tmsWriteCharacter( context, 39, row, CHAR_dblvertical );
+		vdpWriteCharacter( context, 0, row, CHAR_dblvertical );
+		vdpWriteCharacter( context, 39, row, CHAR_dblvertical );
 	}
 
 	setBorderLineBuffer( lineBuffer, CHAR_dblbottomleft, CHAR_dblhorizontal, CHAR_dblbottomright );
-	tmsWriteText( context, 0, 23, lineBuffer );
+	vdpWriteText( context, 0, 23, lineBuffer );
 	
 	printf("Writing string to VRAM = %s\n", title_str);
-	tmsWriteText( context, 11, 2, title_str );
+	vdpWriteText( context, 11, 2, title_str );
 	
 	printf("Writing ASCII characters to VRAM\n");
 	int padding = 4;
@@ -84,7 +84,7 @@ void main( void )
 		i++;
 		if (i >= linelength) {
 			lineBuffer[i] = 0;
-			tmsWriteText( context, padding, ypos, lineBuffer );
+			vdpWriteText( context, padding, ypos, lineBuffer );
 			ypos += 2;			
 			if ((ypos >= 22) && (c < 255)) {
 				// too far. just stop. 

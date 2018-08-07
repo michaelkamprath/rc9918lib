@@ -19,48 +19,23 @@
 #include <stdio.h>
 
 #include "rc9918lib.h"
+#include "rc9918lib_Internal.h"
 #include "DefaultFonts.h"
 
 // private defines
 
-#define TMSREGBIT 0x80
+#define vdpREGBIT 0x80
 
-#define TMS_REGISTER_COLOR	7
+#define vdp_REGISTER_VDP_OPTIONS	1
+#define vdp_REGISTER_COLOR			7
 
-//
-// RC9918Context Definition
-//
 
-typedef struct {
-	const unsigned char*	font;
-	unsigned int	fontMemSize;
-	unsigned char	graphicsMode;		// see graphics mode values
-	unsigned char 	ramPort;
-	unsigned char 	registerPort;
-	unsigned char 	registerTable[8];
-} RC9918Context;
 
-// Graphic mode values
-
-#define GMODE_UNSET 		0
-#define GMODE_GRAPHICS_1	1
-#define GMODE_GRAPHICS_2	2
-#define GMODE_MULTICOLOR	3
-#define GMODE_TEXT			4
-
-// Calculate memory locations based on register values
-
-#define VRAM_ADDR_NAME_TABLE(c)			c->registerTable[2]*0x0400
-#define VRAM_ADDR_COLOR_TABLE(c)		c->registerTable[3]*0x0040
-#define VRAM_ADDR_GENERATOR_TABLE(c)	c->registerTable[4]*0x0800
-#define VRAM_ADDR_SPRITE_ATTRIBUTES(c)	c->registerTable[5]*0x0080
-#define VRAM_ADDR_SPRITE_PATTERN(c)		c->registerTable[6]*0x0800
 
 // calculate dimension properties
 
 unsigned int SCREEN_COLUMNS_BY_MODE[5] = {0, 32, 32, 32, 40};
 
-#define SCREEN_COLUMNS(c)	SCREEN_COLUMNS_BY_MODE[c->graphicsMode]
 
 //
 // We use a stack allocated array of RC9918Context objects rather than requiring 
@@ -73,21 +48,28 @@ unsigned int SCREEN_COLUMNS_BY_MODE[5] = {0, 32, 32, 32, 40};
 RC9918Context	gContextArray[RC9918_CONTEXT_ARRAY_SIZE];
 int gAllocatedContextCount = 0;
 
-const unsigned char TMS_BLANK_REGISTER_TABLE[8] = { 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-const unsigned char TMS_BITMAP_REGISTER_TABLE[8] = { 0x02, 0xC2, 0x0E, 0xFF, 0x00, 0x76, 0x03, 0x01 };
+const unsigned char vdp_BLANK_REGISTER_TABLE[8] = { 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+//const unsigned char vdp_BITMAP_REGISTER_TABLE[8] = { 0x02, 0xC2, 0x0E, 0xFF, 0x00, 0x76, 0x03, 0x01 };
 
 
 #pragma mark - Private Methods
-// 
-// private methods
-//
 
-void _tmsWriteRegister( const RC9918Context* c, unsigned char value, unsigned char register_num );
-void _tmsSetRegister( RC9918Context* c, unsigned char value, unsigned char register_num );
-void _tmsApplyRegisterTable( const RC9918Context* c );
-void _tmsSetVRAMAddress( const RC9918Context* c, unsigned int addr );
+void _vdpInitContextVRAMAddresses( RC9918Context* c )
+{
+	if ( c->graphicsMode == GMODE_GRAPHICS_2 ) {
+		c->colorTableAddr = (((c->registerTable[3]&0x80) == 0) ? 0 : 0x2000);
+		c->generatorTableAddr = (((c->registerTable[4]&0x80) == 0) ? 0 : 0x2000);
+	} else {
+		c->colorTableAddr = c->registerTable[3]*0x0040;
+		c->generatorTableAddr = c->registerTable[4]*0x0800;
+	}
+	
+	c->nameTableAddr = c->registerTable[2]*0x0400;
+	c->spriteAttributesAddr = c->registerTable[5]*0x0080;
+	c->spritePatternsAddr = c->registerTable[6]*0x0800;
+}
 
-void _tmsWriteRegister( const RC9918Context* c, unsigned char value, unsigned char register_num )
+void _vdpWriteRegister( const RC9918Context* c, unsigned char value, unsigned char register_num )
 {
 	unsigned char reg_value = register_num + 0x80;
 	
@@ -96,35 +78,24 @@ void _tmsWriteRegister( const RC9918Context* c, unsigned char value, unsigned ch
 	outp(c->registerPort,reg_value);
 }
 
-void _tmsSetRegister( RC9918Context* c, unsigned char value, unsigned char register_num )
+void _vdpSetRegister( RC9918Context* c, unsigned char value, unsigned char register_num )
 {
 	c->registerTable[register_num] = value;
 	
-	_tmsWriteRegister( c, value, register_num );
+	_vdpWriteRegister( c, value, register_num );
 }
 
 
-void _tmsApplyRegisterTable( const RC9918Context* c )
+void _vdpApplyRegisterTable( const RC9918Context* c )
 {
 	for (unsigned char i = 0; i < 8; i++ ) {
-		_tmsWriteRegister( c, c->registerTable[i], i);
+		_vdpWriteRegister( c, c->registerTable[i], i);
 	}
 }
 
-void _tmsSetVRAMAddress( const RC9918Context* c, unsigned int addr )
-{
-	unsigned char lsb = addr&0x00FF;
-	unsigned char msb = ((addr >> 8)&0x3F) + 0x40;
-	
-	outp(c->registerPort,lsb);
-	for (int nop = 0; nop < 2; nop++ ) {;}
-	outp(c->registerPort,msb);
-}
-
-
 #pragma mark - Public Methods
 
-void* tmsInitBoard( unsigned char ramPort, unsigned char registerPort ) 
+void* vdpInitBoard( unsigned char ramPort, unsigned char registerPort ) 
 {
 	gAllocatedContextCount++;
 	if (gAllocatedContextCount >= RC9918_CONTEXT_ARRAY_SIZE ) {
@@ -141,19 +112,17 @@ void* tmsInitBoard( unsigned char ramPort, unsigned char registerPort )
 	c->registerPort = registerPort;
 	
 	for (int i =0; i < 8; i++ ) {
-		c->registerTable[i] = TMS_BLANK_REGISTER_TABLE[i];
+		c->registerTable[i] = vdp_BLANK_REGISTER_TABLE[i];
 	}
-	_tmsApplyRegisterTable( c );
+	_vdpApplyRegisterTable( c );
+	_vdpInitContextVRAMAddresses( c );
 	
 	// write 0's to VRAM
-	_tmsSetVRAMAddress( c, 0 );
-	for (int i = 0; i < 0x4000; i++ ) {
-		outp(c->ramPort, 0);
-	}
+	_vdpWriteValueToVRAM( c->ramPort, c->registerPort, 0, 0x4000, 0x0 );
 	return c;
 }
 
-void tmsWriteToVRAM(
+void vdpCopyToVRAM(
 	const void* context,
 	const unsigned char *data,
 	unsigned int byte_count,
@@ -161,13 +130,15 @@ void tmsWriteToVRAM(
 ) {
 	const RC9918Context* c = (const RC9918Context*)context;
 	
-	_tmsSetVRAMAddress( c, vram_addr );
-	for (int i = 0; i < byte_count; i++ ) {
-		outp(c->ramPort, data[i]);
+	_vdpSetVRAMAddress( c->registerPort, vram_addr );
+	const unsigned char *p = data;
+	while (p < data+byte_count) {
+		outp(c->ramPort, *p );
+		p++;
 	}
 }
 
-void tmsSetDefaultFont( void* context )
+void vdpSetDefaultFont( void* context )
 {
 	RC9918Context* c = (RC9918Context*)context;
 	
@@ -185,10 +156,10 @@ void tmsSetDefaultFont( void* context )
 			return;
 	}
 	
-	tmsWriteGeneratorTable( context, c->font, c->fontMemSize );
+	vdpCopyToGeneratorTable( context, c->font, c->fontMemSize );
 }
 
-void tmsSetTextFont(
+void vdpSetTextFont(
 	void* context,
 	const unsigned char* font_data,
 	unsigned int font_byte_count
@@ -198,47 +169,88 @@ void tmsSetTextFont(
 	c->font = font_data;
 	c->fontMemSize = font_byte_count;
 	
-	tmsWriteGeneratorTable( context, c->font, c->fontMemSize );
+	vdpCopyToGeneratorTable( context, c->font, c->fontMemSize );
 }
 
-void tmsWriteGeneratorTable(
+void vdpCopyToGeneratorTable(
 	const void* context,
 	const unsigned char* data,
 	unsigned int byte_count
 ) {
 	RC9918Context* c = (RC9918Context*)context;
-	tmsWriteToVRAM( context, data, byte_count, VRAM_ADDR_GENERATOR_TABLE(c) );
+	_vdpCopyDataToVRAM(
+			c->ramPort,
+			c->registerPort,
+			data,
+			byte_count,
+			c->generatorTableAddr
+		);
+
+//	vdpCopyToVRAM( context, data, byte_count, c->generatorTableAddr );
 }
 
-void tmsWriteGeneratorTableEntry( 
+void vdpWriteNGeneratorTableEntries( 
+	const void* context,
+	const unsigned char* data,
+	unsigned int startEntryIndex,
+	unsigned int entryCount
+) {
+	RC9918Context* c = (RC9918Context*)context;
+	_vdpCopyDataToVRAM(
+			c->ramPort,
+			c->registerPort,
+			data,
+			8*entryCount,
+			c->generatorTableAddr + startEntryIndex*8
+		);
+
+// 	vdpCopyToVRAM(
+// 			context,
+// 			data,
+// 			8*entryCount,
+// 			c->generatorTableAddr + startEntryIndex*8
+// 		);
+}
+
+void vdpCopyToGeneratorTableEntry( 
 	const void* context,
 	const unsigned char* data,
 	unsigned int entryIndex
 ) {
-	RC9918Context* c = (RC9918Context*)context;
-	tmsWriteToVRAM( context, data, 8, VRAM_ADDR_GENERATOR_TABLE(c) + entryIndex*8 );
+	vdpWriteNGeneratorTableEntries( context, data, entryIndex, 1 );
 }
 
-void tmsWriteText( const void* context, unsigned char xpos, unsigned char ypos, const unsigned char* str )
+void vdpWriteText( const void* context, unsigned char xpos, unsigned char ypos, const unsigned char* str )
 {
 	const RC9918Context* c = (const RC9918Context*)context;
-	unsigned int vram_offset = VRAM_ADDR_NAME_TABLE(c) + (ypos*SCREEN_COLUMNS(c) + xpos);
+	unsigned int vram_offset = c->nameTableAddr + (ypos*SCREEN_COLUMNS(c) + xpos);
 	
-	_tmsSetVRAMAddress( c, vram_offset );	
-	int i = 0;	
-	while ( str[i] != 0 ) {
-		outp( c->ramPort, str[i]);
-		i++;
-	}
+	_vdpCopyDataToVRAM( c->ramPort, c->registerPort, str, strlen(str), vram_offset );
 }
 
-void tmsWriteCharacter( const void* context, unsigned char xpos, unsigned char ypos, unsigned char value )
-{
+void vdpWriteNCharacters(
+	const void* context,
+	unsigned char start_xpos,
+	unsigned char start_ypos,
+	unsigned char value,
+	unsigned int repeat_count
+) {
 	const RC9918Context* c = (const RC9918Context*)context;
-	unsigned int vram_offset = VRAM_ADDR_NAME_TABLE(c) + (ypos*SCREEN_COLUMNS(c) + xpos);
+	unsigned int vram_offset = c->nameTableAddr 
+								+ (start_ypos*SCREEN_COLUMNS(c) + start_xpos);
 	
-	_tmsSetVRAMAddress( c, vram_offset );
-	outp( c->ramPort, value);	
+	_vdpWriteValueToVRAM(
+			c->ramPort,
+			c->registerPort,
+			value,
+			repeat_count,
+			vram_offset
+		);
+}
+
+void vdpWriteCharacter( const void* context, unsigned char xpos, unsigned char ypos, unsigned char value )
+{
+	vdpWriteNCharacters( context, xpos, ypos, value, 1 );
 }
 
 
@@ -257,98 +269,215 @@ void debugPrintContext( const void* context )
 		printf("   register[%d] = 0x%X\n", i, c->registerTable[i]);
 	}
 	
-	printf("\n   Name table loc = 0x%X\n", VRAM_ADDR_NAME_TABLE(c) );
-	printf("   Color table loc = 0x%X\n", VRAM_ADDR_COLOR_TABLE(c) );
-	printf("   Generator table loc = 0x%X\n", VRAM_ADDR_GENERATOR_TABLE(c) );
-	printf("   Sprite attributes loc = 0x%X\n", VRAM_ADDR_SPRITE_ATTRIBUTES(c) );
-	printf("   Sprite patterns loc = 0x%X\n", VRAM_ADDR_SPRITE_PATTERN(c) );
+	printf("\n   Name table loc = 0x%X\n", c->nameTableAddr );
+	printf("   Color table loc = 0x%X\n", c->colorTableAddr );
+	printf("   Generator table loc = 0x%X\n", c->generatorTableAddr );
+	printf("   Sprite attributes loc = 0x%X\n", c->spriteAttributesAddr );
+	printf("   Sprite patterns loc = 0x%X\n", c->spritePatternsAddr );
 	printf("   Column count = %d\n", SCREEN_COLUMNS(c) );
 	printf("\n");
 }
 
 #pragma mark - Text Mode
 
-const unsigned char TMS_TEXTMODE_REGISTER_TABLE[8] = { 0x00, 0xD0, 0x00, 0x00, 0x01, 0x00, 0x00, 0xF1 };
+const unsigned char vdp_TEXTMODE_REGISTER_TABLE[8] = { 0x00, 0xD0, 0x00, 0x00, 0x01, 0x00, 0x00, 0xF1 };
 
-void tmsSetTextMode( void* context ) 
+void vdpSetTextMode( void* context ) 
 {
 	RC9918Context* c = (RC9918Context*)context;
 	c->graphicsMode = GMODE_TEXT;
 
 	for (int i = 0; i < 8; i++ ) {
-		c->registerTable[i] = TMS_TEXTMODE_REGISTER_TABLE[i];
+		c->registerTable[i] = vdp_TEXTMODE_REGISTER_TABLE[i];
 	}
+	_vdpApplyRegisterTable( c );
+	_vdpInitContextVRAMAddresses( c );
 
-	_tmsApplyRegisterTable( c );
-
-	tmsSetDefaultFont( context );
+	vdpSetDefaultFont( context );
 		
 	// blank the screen
-	_tmsSetVRAMAddress( c, VRAM_ADDR_NAME_TABLE(c) );
-	for (int i = 0; i < SCREEN_COLUMNS(c)*24; i++ ) {
-		outp( c->ramPort, 0x20 );
-	}	
+	_vdpWriteValueToVRAM(
+			c->ramPort,
+			c->registerPort,
+			0x20,
+			SCREEN_COLUMNS(c)*24,
+			c->nameTableAddr
+		);
 }
 
-void tmsSetTextModeBackgroundColor( void* context, unsigned char color )
+void vdpSetTextModeBackgroundColor( void* context, unsigned char color )
 {
 	RC9918Context* c = (RC9918Context*)context;
-	unsigned char cur_color = c->registerTable[TMS_REGISTER_COLOR];
+	unsigned char cur_color = c->registerTable[vdp_REGISTER_COLOR];
 	unsigned char value = (cur_color&0xF0) + (color&0x0F);
 	
-	_tmsSetRegister( c, value, TMS_REGISTER_COLOR );	
+	_vdpSetRegister( c, value, vdp_REGISTER_COLOR );	
 }
-void tmsSetTextModeForegroundColor( void* context, unsigned char color )
+void vdpSetTextModeForegroundColor( void* context, unsigned char color )
 {
 	RC9918Context* c = (RC9918Context*)context;
-	unsigned char cur_color = c->registerTable[TMS_REGISTER_COLOR];
+	unsigned char cur_color = c->registerTable[vdp_REGISTER_COLOR];
 	unsigned char value = ((color<<4)&0xF0) + (cur_color&0x0F);
 	
-	_tmsSetRegister( c, value, TMS_REGISTER_COLOR );	
+	_vdpSetRegister( c, value, vdp_REGISTER_COLOR );	
 }
 
-#pragma mark - Bitmap Graphics Mode
+#pragma mark - Graphics Mode 1
 
-const unsigned char TMS_GMODE1_REGISTER_TABLE[8] = { 0x00, 0xC3, 0x02, 0x2C, 0x00, 0x18, 0x04, 0x01 };
+const unsigned char vdp_GMODE1_REGISTER_TABLE[8] = { 0x00, 0xC3, 0x00, 0x0C, 0x02, 0x08, 0x01, 0x01 };
 
-void tmsSetGraphicsMode( void* context ) 
+void vdpSetGraphicsMode1( void* context ) 
 {
 	RC9918Context* c = (RC9918Context*)context;
 
 	c->graphicsMode = GMODE_GRAPHICS_1;
 	
 	for (int i = 0; i < 8; i++ ) {
-		c->registerTable[i] = TMS_GMODE1_REGISTER_TABLE[i];
+		c->registerTable[i] = vdp_GMODE1_REGISTER_TABLE[i];
 	}
-	_tmsApplyRegisterTable( c );
+	_vdpApplyRegisterTable( c );
+	_vdpInitContextVRAMAddresses( c );
 	
-	tmsSetDefaultFont( context );
+	vdpSetDefaultFont( context );
 	
 	// blank the screen
-	_tmsSetVRAMAddress( c, VRAM_ADDR_NAME_TABLE(c) );
-	for (int i = 0; i < 32*24; i++ ) {
-		outp( c->ramPort, 0x20 );
-		for (int nop = 0; nop < 2; nop++) {;}
-	}
+	_vdpWriteValueToVRAM(
+			c->ramPort,
+			c->registerPort,
+			0x20,
+			SCREEN_COLUMNS(c)*24,
+			c->nameTableAddr
+		);
 	
 	// set colors to white on black. 
-	_tmsSetVRAMAddress( c, VRAM_ADDR_COLOR_TABLE(c) );
-	for (int i = 0; i < 32; i++ ) {
+	_vdpWriteValueToVRAM(
+			c->ramPort,
+			c->registerPort,
+			0xF1,
+			SCREEN_COLUMNS(c),
+			c->colorTableAddr
+		);
+}
+
+void vdpSetGraphicsMode1ColorEntry( const void* context, unsigned char color, unsigned int entryIndex )
+{
+	const RC9918Context* c = (const RC9918Context*)context;
+	
+	_vdpSetVRAMAddress( c->registerPort, c->colorTableAddr + entryIndex );
+	outp( c->ramPort, color );
+}
+
+#pragma mark - Graphics Mode 2
+
+const unsigned char vdp_GMODE2_REGISTER_TABLE[8] = { 0x02, 0xC0, 0x06, 0xFF, 0x03, 0x36, 0x07, 0x01 };
+
+void vdpSetGraphicsMode2( void* context ) 
+{
+	RC9918Context* c = (RC9918Context*)context;
+
+	c->graphicsMode = GMODE_GRAPHICS_2;
+	for (int i = 0; i < 8; i++ ) {
+		c->registerTable[i] = vdp_GMODE2_REGISTER_TABLE[i];
+	}
+	_vdpApplyRegisterTable( c );
+	_vdpInitContextVRAMAddresses( c );
+
+	// blank the screen
+	_vdpSetVRAMAddress( c->registerPort, c->nameTableAddr );
+	for (int i = 0; i < 32*24; i++ ) {
+		outp( c->ramPort, 0 );
+	}
+
+	// set colors to white on black. 
+	_vdpSetVRAMAddress( c->registerPort, c->colorTableAddr );
+	for (int i = 0; i < 0x800; i++ ) {
 		outp( c->ramPort, 0xF1 );
 	}
 }
 
-void tmsSetGraphicsModeColorEntry( const void* context, unsigned char color, unsigned int entryIndex )
-{
+void vdpCopyGraphicsMode2GeneratorTableEntries( 	
+	const void* context,
+	const unsigned char* data,
+	unsigned int startBlockNum,
+	unsigned int startEntryIndex,
+	unsigned int entryCount
+) {
+	const RC9918Context* c = (const RC9918Context*)context;
+	vdpCopyToVRAM(
+			context,
+			data,
+			8*entryCount,
+			c->generatorTableAddr + startBlockNum*0x800 + startEntryIndex*8
+		);
+}
+
+void vdpCopyNGraphicModeColorTableEntries( 
+	const void* context,
+	const unsigned char* data,
+	unsigned int startBlockNum,
+	unsigned int startEntryIndex,
+	unsigned int entryCount
+) {
+	const RC9918Context* c = (const RC9918Context*)context;
+	vdpCopyToVRAM(
+			context,
+			data,
+			8*entryCount,
+			c->colorTableAddr + startBlockNum*0x800 + startEntryIndex*8
+		);
+}
+
+void vdpSetNGraphicModeColorTableEntries( 
+	const void* context,
+	const unsigned char value,
+	unsigned int startBlockNum,
+	unsigned int startIndex,
+	unsigned int count
+) {
 	const RC9918Context* c = (const RC9918Context*)context;
 	
-	_tmsSetVRAMAddress( c, VRAM_ADDR_COLOR_TABLE(c) + entryIndex );
-	outp( c->ramPort, color );
+	_vdpWriteValueToVRAM(
+			c->ramPort,
+			c->registerPort,
+			value,
+			count,
+			c->colorTableAddr + startBlockNum*0x800 + startIndex
+		);
 }
 
 #pragma mark - Sprites
 
-void tmsWriteSpriteAttributes(
+void vdpSetSpriteSizeAndMagnification(
+	void* context,
+	bool is16x16Sprite,
+	bool isMagnified
+) {
+	RC9918Context* c = (RC9918Context*)context;
+	
+	unsigned char curReg1 = c->registerTable[1];
+	
+	unsigned char newReg1 = (curReg1&0xFC);	// keep other values
+	if (is16x16Sprite) {
+		newReg1 += 0x1;
+	}
+	if (isMagnified) {
+		newReg1 += 0x2;
+	}
+	
+	_vdpSetRegister( c, newReg1, vdp_REGISTER_VDP_OPTIONS );
+}
+
+void vdpSetSpritePatterns(
+	const void* context,
+	unsigned char* pattern_data,
+	unsigned int data_size
+) {
+	const RC9918Context* c = (const RC9918Context*)context;
+
+	vdpCopyToVRAM( context,  pattern_data, data_size,  c->spritePatternsAddr );
+}
+
+void vdpWriteSpriteAttributes(
 	const void* context,
 	unsigned int firstSpriteIndex,
 	unsigned int countAttributes,
@@ -356,17 +485,8 @@ void tmsWriteSpriteAttributes(
 ) {
 	const RC9918Context* c = (const RC9918Context*)context;
 
-	unsigned int vram_addr = VRAM_ADDR_SPRITE_ATTRIBUTES(c) + firstSpriteIndex*sizeof(SpriteAttribute);
+	unsigned int vram_addr = c->spriteAttributesAddr + firstSpriteIndex*sizeof(SpriteAttribute);
 	
-	tmsWriteToVRAM( context,  spriteData, countAttributes*sizeof(SpriteAttribute),  vram_addr);
+	vdpCopyToVRAM( context,  spriteData, countAttributes*sizeof(SpriteAttribute),  vram_addr);
 }
 
-void tmsSetSpritePatterns(
-	const void* context,
-	unsigned char* pattern_data,
-	unsigned int data_size
-) {
-	const RC9918Context* c = (const RC9918Context*)context;
-
-	tmsWriteToVRAM( context,  pattern_data, data_size,  VRAM_ADDR_SPRITE_PATTERN(c) );
-}

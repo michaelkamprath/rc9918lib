@@ -6,7 +6,7 @@ OBJDIR = obj
 
 EXAMPLEDIR = examples
 EXAMPLEBINDIR = examples/bin
-LIB_SRC = $(wildcard src/*.c)
+LIB_SRC = $(wildcard src/*.c) $(wildcard src/*.asm) 
 
 EXAMPLEAPPS = $(foreach example, $(EXAMPLES), $(EXAMPLEBINDIR)/$(addsuffix .COM,$(shell echo $(example) | tr A-Z a-z)))
 EXAMPLEBINS = $(foreach example, $(EXAMPLES), $(EXAMPLEBINDIR)/$(addsuffix .bin,$(example)))

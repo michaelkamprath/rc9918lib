@@ -1,7 +1,7 @@
 # rc9918lib
 A C library for using the [TMS9918A video board](https://github.com/jblang/rc9918) on a [RC2014 retrocomputer](https://rc2014.co.uk).
 
-This library is still verymuch a work in progress. It has been tested against the rc9918 rev 1 board on a RC2014 running RomWBW v2.9.1-pre.5.
+This library is still very much a work in progress. It has been tested against the rc9918 rev 1 board on a RC2014 running RomWBW v2.9.1-pre.5.
 
 ## Links
 * [RC9918 Board](https://github.com/jblang/rc9918)
@@ -29,4 +29,8 @@ Each call to the library requires that a `context` handle be passed to it, and t
 3. Update library for forthcoming revision 2 of the rc9918 board, notably to enable interrupts.
 4. Update Makefile to allow compile time overriding of `RC9918_CONTEXT_ARRAY_SIZE` value. 
 5. Optimize, optimize, optimize 
-6. Make default fonts optionally compiled to save space is not needed
+6. Make default fonts optionally compiled to save space if not needed
+
+## Acknowledgements
+
+Much of the code in this library was heavily inspired by the code examples provide by J. B. Langston in his [RC9918 Board repository](https://github.com/jblang/rc9918/tree/master/examples).  

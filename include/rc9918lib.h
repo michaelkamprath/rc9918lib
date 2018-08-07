@@ -17,27 +17,28 @@
 
 #ifndef RC9918LIB_H_
 #define RC9918LIB_H_
+#include <stdbool.h>
 
 //
 // General Defines
 //
 
-#define TMSCOLOR_TRANSPARENT	0
-#define TMSCOLOR_BLACK			1
-#define TMSCOLOR_MEDIUM_GREEN	2
-#define TMSCOLOR_LIGHT_GREEN	3
-#define TMSCOLOR_DARK_BLUE		4
-#define TMSCOLOR_LIGHT_BLUE		5
-#define TMSCOLOR_DARK_RED		6
-#define TMSCOLOR_CYAN			7
-#define TMSCOLOR_MEDIUM_RED		8
-#define TMSCOLOR_LIGHT_RED		9
-#define TMSCOLOR_DARK_YELLOW	0xA
-#define TMSCOLOR_LIGHT_YELLOW	0xB
-#define TMSCOLOR_DARK_GREEN		0xC
-#define TMSCOLOR_MAGENTA		0xD
-#define TMSCOLOR_GRAY			0xE
-#define TMSCOLOR_WHITE			0xF 
+#define VDPCOLOR_TRANSPARENT	0
+#define VDPCOLOR_BLACK			1
+#define VDPCOLOR_MEDIUM_GREEN	2
+#define VDPCOLOR_LIGHT_GREEN	3
+#define VDPCOLOR_DARK_BLUE		4
+#define VDPCOLOR_LIGHT_BLUE		5
+#define VDPCOLOR_DARK_RED		6
+#define VDPCOLOR_CYAN			7
+#define VDPCOLOR_MEDIUM_RED		8
+#define VDPCOLOR_LIGHT_RED		9
+#define VDPCOLOR_DARK_YELLOW	0xA
+#define VDPCOLOR_LIGHT_YELLOW	0xB
+#define VDPCOLOR_DARK_GREEN		0xC
+#define VDPCOLOR_MAGENTA		0xD
+#define VDPCOLOR_GRAY			0xE
+#define VDPCOLOR_WHITE			0xF 
 
 #define RC9918_DEFAULT_RAMPORT			0x98
 #define RC9918_DEFAULT_REGISTER_PORT	0x99
@@ -51,44 +52,84 @@
  * returns a board context that will need to be passed to subsequent calls
  * in the library. Should be called only once per port configuration.
  */
-void* tmsInitBoard(	unsigned char ramPort, unsigned char registerPort );
+void* vdpInitBoard(	unsigned char ramPort, unsigned char registerPort );
 
-void tmsWriteToVRAM(	const void* context,
+void vdpCopyToVRAM(	const void* context,
 						const unsigned char *data,
 						unsigned int byte_count,
 						unsigned int vram_addr );	
 
-void tmsWriteGeneratorTable(	const void* context,
+void vdpCopyToGeneratorTable(	const void* context,
 								const unsigned char* data,
 								unsigned int byte_count );
-void tmsWriteGeneratorTableEntry(	const void* context,
+void vdpWriteNGeneratorTableEntries( 	const void* context,
+										const unsigned char* data,
+										unsigned int startEntryIndex,
+										unsigned int entryCount );
+void vdpCopyToGeneratorTableEntry(	const void* context,
 									const unsigned char* data,
 									unsigned int entryIndex );
 
-void tmsSetDefaultFont( void* context );
-void tmsSetTextFont(	void* context,
+void vdpSetDefaultFont( void* context );
+void vdpSetTextFont(	void* context,
 						const unsigned char* font_data,
 						unsigned int font_byte_count );
-void tmsWriteText( const void* context, unsigned char xpos, unsigned char ypos, const unsigned char* str );
-void tmsWriteCharacter( const void* context, unsigned char xpos, unsigned char ypos, unsigned char value );
-
+						
+void vdpWriteText(	const void* context, 
+					unsigned char xpos,
+					unsigned char ypos,
+					const unsigned char* str );
+					
+void vdpWriteCharacter( 	const void* context, 
+							unsigned char xpos,
+							unsigned char ypos,
+							unsigned char value );
+							
+void vdpWriteNCharacters(	const void* context,
+							unsigned char start_xpos,
+							unsigned char start_ypos,
+							unsigned char value,
+							unsigned int repeat_count );
 
 
 //
 // Text Mode
 //
 
-void tmsSetTextMode( void* context );
-void tmsSetTextModeBackgroundColor( void* context, unsigned char color );
-void tmsSetTextModeForegroundColor( void* context, unsigned char color );
+void vdpSetTextMode( void* context );
+void vdpSetTextModeBackgroundColor( void* context, unsigned char color );
+void vdpSetTextModeForegroundColor( void* context, unsigned char color );
 
 //
 //  Graphics Mode (Mode 1)
 //
 
-void tmsSetGraphicsMode( void* context );
-void tmsSetGraphicsModeColorEntry( const void* context, unsigned char color, unsigned int entryIndex );
+void vdpSetGraphicsMode1( void* context );
+void vdpSetGraphicsMode1ColorEntry( const void* context, unsigned char color, unsigned int entryIndex );
 
+//
+// Graphics Mode 2
+// 
+
+void vdpSetGraphicsMode2( void* context ) ;
+void vdpCopyGraphicsMode2GeneratorTableEntries( 	
+											const void* context,
+											const unsigned char* data,
+											unsigned int startBlockNum,
+											unsigned int startEntryIndex,
+											unsigned int entryCount );
+void vdpCopyNGraphicModeColorTableEntries(
+											const void* context,
+											const unsigned char* data,
+											unsigned int startBlockNum,
+											unsigned int startEntryIndex,
+											unsigned int entryCount );
+void vdpSetNGraphicModeColorTableEntries( 
+											const void* context,
+											const unsigned char value,
+											unsigned int startBlockNum,
+											unsigned int startIndex,
+											unsigned int count );
 //
 // Sprites
 //
@@ -100,14 +141,18 @@ typedef struct {
 	unsigned char properties;	// Early Clock and Color
 } SpriteAttribute;
 
-void tmsWriteSpriteAttributes(	const void* context,
+void vdpSetSpriteSizeAndMagnification(	void* context,
+										bool is16x16Sprite,
+										bool isMagnified );
+void vdpSetSpritePatterns(	const void* context,
+							unsigned char* pattern_data,
+							unsigned int data_size );
+								
+void vdpWriteSpriteAttributes(	const void* context,
 								unsigned int firstSpriteIndex,
 								unsigned int countAttributes,
 								const SpriteAttribute* spriteData );
 
-void tmsSetSpritePatterns(	const void* context,
-							unsigned char* pattern_data,
-							unsigned int data_size );
 
 //
 // DEBUG
