@@ -59,4 +59,15 @@ void _vdpWriteValueToVRAM(	unsigned char ramPort,
 							unsigned int repeat_count,
 							unsigned int vram_start_address
 						) __smallc;
+						
+						
+void _vdpCopyAdjustedSceneSectionsToVRAM(
+			unsigned char ramPort,
+			unsigned char registerPort,
+			const unsigned char* scene_data,
+			unsigned char data_value_increment,	
+			unsigned int start_vram_addr,
+			const unsigned int* scene_sections,
+			unsigned char scene_sections_count
+		) __smallc;
 #endif

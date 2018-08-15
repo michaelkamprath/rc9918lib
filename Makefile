@@ -1,4 +1,4 @@
-EXAMPLES = ascii sprite
+EXAMPLES = ascii sprite scroller
 
 INCDIR = include
 SRCDIR = src

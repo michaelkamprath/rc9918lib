@@ -26,10 +26,11 @@ Each call to the library requires that a `context` handle be passed to it, and t
 
 1. Complete library for all graphic modes of the TMS9918A, possibly rethinking the library's API.
 2. Create and example or two for each graphics mode.
-3. Update library for forthcoming revision 2 of the rc9918 board, notably to enable interrupts.
-4. Update Makefile to allow compile time overriding of `RC9918_CONTEXT_ARRAY_SIZE` value. 
-5. Optimize, optimize, optimize 
-6. Make default fonts optionally compiled to save space if not needed
+3. Update library for forthcoming revision 3 of the rc9918 board, notably to enable interrupts.
+4. Update library to take advantage of the VDP interrupts for syncing screen updates
+5. Update Makefile to allow compile time overriding of `RC9918_CONTEXT_ARRAY_SIZE` value. 
+6. Optimize, optimize, optimize 
+7. Make default fonts optionally compiled to save space if not needed
 
 ## Acknowledgements
 

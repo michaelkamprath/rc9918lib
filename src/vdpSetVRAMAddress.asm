@@ -34,12 +34,12 @@ __vdpSetVRAMAddress:
 	ld		d,(hl)			; de = desired VRAM address
 	inc		hl
 	ld		c,(hl)			; no need to load MSB because LSB is the char, so c = registerPort
-	ld      a, e			; send lsb
-	out     (c), a
-	ld      a, d			; mask off msb to max of 16KB
-	and     $3F
-	or      $40				; set second highest bit to indicate write
-	out     (c), a			; send msb
+	ld		a, e			; send lsb
+	out		(c), a
+	ld		a, d			; mask off msb to max of 16KB
+	and		$3F
+	or		$40				; set second highest bit to indicate write
+	out		(c), a			; send msb
 	ret
 	
 	

@@ -40,8 +40,8 @@ __vdpWriteValueToVRAM:
 	ld		a,e
 	out		(c),a			; send lsb of VRAM addr
 	ld		a,d
-	and     $3F
-	or      $40				; set second highest bit to indicate write
+	and		$3F
+	or		$40				; set second highest bit to indicate write
 	out		(c),a			; send msb of VRAM address
 
 	; now write data to vram
@@ -53,9 +53,9 @@ __vdpWriteValueToVRAM:
 copyloop:
 	ld		a,b				; set a to the value to write
 	out		(c),a			; send it to vram
-	defs    5, 0 			; nops to waste time
-	dec     de 				; continue until count is zero
-	ld      a, d
-	or      e
-	jr      nz, copyloop
+	defs	5, 0 			; nops to waste time
+	dec		de 				; continue until count is zero
+	ld		a, d
+	or		e
+	jr		nz, copyloop
 	ret
