@@ -19,6 +19,7 @@
 // 		https://github.com/jblang/rc9918/blob/master/examples/sprite.asm
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <im2.h>
 
 #include "rc9918lib.h"

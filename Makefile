@@ -1,4 +1,4 @@
-EXAMPLES = ascii sprite scroller
+EXAMPLES = ascii sprite scroller test
 
 INCDIR = include
 SRCDIR = src
@@ -11,6 +11,9 @@ LIB_SRC = $(wildcard src/*.c) $(wildcard src/*.asm)
 EXAMPLEAPPS = $(foreach example, $(EXAMPLES), $(EXAMPLEBINDIR)/$(addsuffix .COM,$(shell echo $(example) | tr A-Z a-z)))
 EXAMPLEBINS = $(foreach example, $(EXAMPLES), $(EXAMPLEBINDIR)/$(addsuffix .bin,$(example)))
 
+COMPILER_ASM_FILES = $(foreach example, $(EXAMPLES), $(EXAMPLEDIR)/$(addsuffix .c.asm,$(example))) \
+					 $(foreach example, $(wildcard src/*.c), $(addsuffix .asm,$(example)))
+					 
 DEPS = $(wildcard include/*.h) $(wildcard src/*.h)
 
 $(EXAMPLES): $(DEPS)
@@ -27,3 +30,4 @@ clean:
 	rm -Rf $(EXAMPLEBINDIR)
 	rm -f $(EXAMPLEDIR)/zcc_opt.def
 	rm -f zcc_opt.def
+	rm -f $(COMPILER_ASM_FILES)

@@ -53,6 +53,13 @@ extern void _vdpCopyDataToVRAM( unsigned char ramPort,
 								unsigned int data_size,
 								unsigned int vram_start_address
 							) __smallc;
+extern void _vdpFastCopyDataToVRAM( 
+								unsigned char ramPort,
+								unsigned char registerPort,
+								unsigned char *data_ptr,
+								unsigned int data_size,
+								unsigned int vram_start_address
+							) __smallc;
 void _vdpWriteValueToVRAM(	unsigned char ramPort,
 							unsigned char registerPort,
 							unsigned char value,

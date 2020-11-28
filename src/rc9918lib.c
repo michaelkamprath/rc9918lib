@@ -156,7 +156,32 @@ void vdpSetDefaultFont( void* context )
 			return;
 	}
 	
-	vdpCopyToGeneratorTable( context, c->font, c->fontMemSize );
+	if ( c->graphicsMode == GMODE_GRAPHICS_2 ) {
+		_vdpCopyDataToVRAM(
+				c->ramPort,
+				c->registerPort,
+				c->font,
+				c->fontMemSize,
+				c->generatorTableAddr
+			);
+		_vdpCopyDataToVRAM(
+				c->ramPort,
+				c->registerPort,
+				c->font,
+				c->fontMemSize,
+				c->generatorTableAddr + FONT_MEMORY_SIZE
+			);
+		_vdpCopyDataToVRAM(
+				c->ramPort,
+				c->registerPort,
+				c->font,
+				c->fontMemSize,
+				c->generatorTableAddr + (2*FONT_MEMORY_SIZE)
+			);	
+	} else {
+		vdpCopyToGeneratorTable( context, c->font, c->fontMemSize );
+	}
+	
 }
 
 void vdpSetTextFont(
@@ -369,7 +394,7 @@ void vdpSetGraphicsMode1ColorEntry( const void* context, unsigned char color, un
 
 #pragma mark - Graphics Mode 2
 
-const unsigned char vdp_GMODE2_REGISTER_TABLE[8] = { 0x02, 0xC0, 0x06, 0xFF, 0x03, 0x36, 0x07, 0x01 };
+const unsigned char VDP_GMODE2_REGISTER_TABLE[8] = { 0x02, 0xC0, 0x06, 0xFF, 0x03, 0x36, 0x07, 0x01 };
 
 void vdpSetGraphicsMode2( void* context ) 
 {
@@ -377,7 +402,7 @@ void vdpSetGraphicsMode2( void* context )
 
 	c->graphicsMode = GMODE_GRAPHICS_2;
 	for (int i = 0; i < 8; i++ ) {
-		c->registerTable[i] = vdp_GMODE2_REGISTER_TABLE[i];
+		c->registerTable[i] = VDP_GMODE2_REGISTER_TABLE[i];
 	}
 	_vdpApplyRegisterTable( c );
 	_vdpInitContextVRAMAddresses( c );

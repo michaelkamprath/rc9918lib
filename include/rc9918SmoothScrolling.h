@@ -1,0 +1,7 @@
+
+
+#ifndef RC9918SMOOTHSCROLLING_H_
+#define RC9918SMOOTHSCROLLING_H_
+
+
+#endif

@@ -17,6 +17,8 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <im2.h>
+#include <string.h>
 
 #include "rc9918lib.h"
 #include "rc9918lib_Internal.h"
@@ -140,9 +142,8 @@ const unsigned char DOWN_THEN_AIR_BRICK_COLORS[64] = {
 		0xE1, 0x61, 0x61, 0x61, 0xE1, 0x61, 0x61, 0x61, 	// step 5
 		0xE1, 0x61, 0x61, 0x61, 0xE1, 0x61, 0x61, 0x61, 	// step 6
 		0xE1, 0x61, 0x61, 0x61, 0xE1, 0x61, 0x61, 0x61, 	// step 7
-	};
+	};	
 
-	
 #define SOLID_BRICK_BASE_CHAR 128
 #define UP_THEN_SOLID_BRICK_BASE_CHAR 136
 #define AIR_THEN_UP_BRICK_BASE_CHAR 144
@@ -172,6 +173,8 @@ const unsigned char TERRAIN_MAP[TERRAIN_HEIGHT*TERRAIN_WIDTH] = {
 
 #include "rc9918lib_Internal.h"
 
+
+
 // sceneSectionsList is a list of a pair on unsigned ints. Each pair describes
 // a section of the terrain that needs to be copied to VRAM. The first number in a 
 // pair indicates the offset in the scene data to start at, and the second number 
@@ -180,6 +183,22 @@ const unsigned char TERRAIN_MAP[TERRAIN_HEIGHT*TERRAIN_WIDTH] = {
 // There are a maximum of 48 entries into this table, indicating all 24 rows of the 
 // screen are scrolling over the end of the scene data and wrapping back to the starte.
 //
+
+typedef struct {
+	RC9918Context			*vdpContext;
+	const unsigned char 	*scene_data;
+	unsigned int 			scene_width;
+	unsigned int 			scene_height;
+	unsigned int 			vram_start_addr;
+	unsigned int			num_bytes_to_copy;
+	unsigned int 			scroll_step;
+	unsigned char 			scroll_sub_step;
+	unsigned char			interupt_phase;
+	unsigned char			screenData[768];
+} BackgroundScrollingContext;
+
+BackgroundScrollingContext gScrollingContext;
+
 unsigned int sceneSectionsList[48];
 
 void blastSceneRowsToVRAM(
@@ -224,10 +243,153 @@ void blastSceneRowsToVRAM(
 }
 
 
-void main( void ) 
-{
-	unsigned char screenBuffer[768];
+
+
+void setIM1InteruptHandler( void* funcptr ) __z88dk_fastcall {
+#asm
+	di								; disable interupts
+	ld      a, 0xC3                 ; prefix with jump instruction
+	ld      (0x0038), a				; $38 is the IM1 interupt vector
+	ld      (0x0039), hl			; hl is funcptr given __z88dk_fastcall
+	im		1						; enable IM1
+	ei								; re-enable interupts
+	ret
+#endasm 
+}
+
+void calculateScrollStepData( BackgroundScrollingContext* sc ) {
+	RC9918Context* c = sc->vdpContext;
+	unsigned int screenColumns = SCREEN_COLUMNS(c);
+	unsigned int scene_width = sc->scene_width;
+	unsigned int scroll_step = sc->scroll_step;
+	unsigned char scroll_sub_step = sc->scroll_sub_step;
 	
+	unsigned int initialColumnsFetched = screenColumns;
+	if ( sc->scroll_step + initialColumnsFetched >= scene_width ) {
+		initialColumnsFetched = scene_width - sc->scroll_step;
+	}
+
+	unsigned int remainingColumnsFetched = screenColumns - initialColumnsFetched;
+	
+	unsigned char *source_ptr;
+	unsigned char *stop_ptr;
+	unsigned char *buffer_ptr = sc->screenData;
+	
+	for (unsigned int r = 0; r <  sc->scene_height; r++ ) {
+		source_ptr = sc->scene_data + r*scene_width + scroll_step;
+		stop_ptr = source_ptr+initialColumnsFetched;
+		while ( source_ptr < stop_ptr ) {
+			*buffer_ptr++ = scroll_sub_step + *source_ptr++;
+		}
+		if (remainingColumnsFetched > 0) {
+			source_ptr = sc->scene_data + r*scene_width;
+			stop_ptr = source_ptr+remainingColumnsFetched;
+			while ( source_ptr < stop_ptr ) {
+				*buffer_ptr++ = scroll_sub_step + *source_ptr++;
+			}
+		}
+	}
+}
+
+
+M_BEGIN_ISR(interuptHandler)
+{
+#asm
+	di
+#endasm
+
+	// first thing is to clear interupt 
+	unsigned char status = inp(gScrollingContext.vdpContext->registerPort);
+	
+	if (status&0x80 > 0 ) {
+		// the interrupt is from the VDP!
+		
+		if (gScrollingContext.interupt_phase == 0) {
+			// now send screen data 
+			_vdpCopyDataToVRAM( 
+					gScrollingContext.vdpContext->ramPort,
+					gScrollingContext.vdpContext->registerPort,
+					gScrollingContext.screenData,
+					gScrollingContext.num_bytes_to_copy,
+					gScrollingContext.vram_start_addr
+				);
+		}
+		else if (gScrollingContext.interupt_phase == 1 ) {
+			// now calculate the next iteration
+			gScrollingContext.scroll_sub_step++;
+			if ( gScrollingContext.scroll_sub_step >= 8 ) {
+				gScrollingContext.scroll_sub_step = 0;
+				gScrollingContext.scroll_step++;
+				if (gScrollingContext.scroll_step >= TERRAIN_WIDTH) {
+					gScrollingContext.scroll_step = 0;
+				}
+			}
+	
+			unsigned char numberTextBuffer[9];
+			sprintf( numberTextBuffer, "%2d", gScrollingContext.scroll_step );
+			vdpWriteText( gScrollingContext.vdpContext, 11, 0, numberTextBuffer );
+			sprintf( numberTextBuffer, "%2d", gScrollingContext.scroll_sub_step );
+			vdpWriteText( gScrollingContext.vdpContext, 11, 1, numberTextBuffer );
+		}
+		else if (gScrollingContext.interupt_phase == 2 ) {
+			calculateScrollStepData( &gScrollingContext );
+		}
+	
+		gScrollingContext.interupt_phase++;
+		if (gScrollingContext.interupt_phase == 3) {
+			gScrollingContext.interupt_phase = 0;
+		}
+	
+		// re-enable VDP interrupt
+		_vdpWriteRegister( gScrollingContext.vdpContext, 0xE0, 1 );
+	}
+#asm
+	ei
+#endasm
+}
+M_END_ISR
+
+void setupScrolling( void *context ) {
+	printf("Setting up scrolling context\n");
+	RC9918Context* c = (RC9918Context*)context;
+	
+	gScrollingContext.vdpContext = c;
+	gScrollingContext.scene_data = TERRAIN_MAP;
+	gScrollingContext.scene_width = TERRAIN_WIDTH;
+	gScrollingContext.scene_height = TERRAIN_HEIGHT;
+	gScrollingContext.scroll_step = 0;
+	gScrollingContext.scroll_sub_step = 0;
+	gScrollingContext.vram_start_addr = c->nameTableAddr + ((24-TERRAIN_HEIGHT)*SCREEN_COLUMNS(c));
+	gScrollingContext.num_bytes_to_copy = TERRAIN_HEIGHT*SCREEN_COLUMNS(c);
+	
+	memset( gScrollingContext.screenData, 0, 768 );
+	
+	calculateScrollStepData( &gScrollingContext );
+	
+	printf("Configuring interupt\n");
+	setIM1InteruptHandler(interuptHandler);
+	printf("Activating interupt\n");
+	_vdpWriteRegister( c, 0xE0, 1 );
+	printf("Done\n");
+}
+
+void disableScrolling( void *context ) {
+	printf("Disabling scrolling context\n");
+	RC9918Context* c = (RC9918Context*)context;
+
+	_vdpWriteRegister( c, 0xC0, 1 );
+}
+
+unsigned int readJoystick( void )
+{
+#asm
+	in		a, ($1)		; read joystick port
+	ld		h, 0
+	ld		l, a		; return value
+#endasm
+}
+void main( void ) 
+{	
 	srand(time(0));
 	
 	printf("Smooth Scrolling Demo\n\n");
@@ -326,17 +488,27 @@ void main( void )
 	// start scrolling loop:
 	unsigned int scrollSubStepIdx = 0;
 	unsigned int scrollStep = 0;
-	unsigned char lineBuffer[33];
-	lineBuffer[32] = 0;
 	
 	vdpWriteText( context, 0, 0, "    Step = 0" );
 	vdpWriteText( context, 0, 1, "   Frame = 0" );
 	vdpWriteText( context, 0, 2, "Joystick = " );
 	unsigned char numberTextBuffer[9];
-	
+
+#if 0
+	setupScrolling( context );
 	for (long int i = 0; i < 50000; i++ ) {
+		if (i%100 == 0) {
+			printf(".");
+		}
+	}
+	printf("\n");
+	disableScrolling( context );
+	printf("DONE!");
 	
-// 		unsigned char joystick = M_INP8( 0x1 );
+#else	
+	for (long int i = 0; i < 50000; i++ ) {
+// 	
+// 		unsigned int joystick = readJoystick();
 // 		sprintf( numberTextBuffer, "%2X", joystick );
 // 		vdpWriteText( context, 11, 2, numberTextBuffer );
 // 		
@@ -393,4 +565,5 @@ void main( void )
 		}
 	
 	}
+#endif
 }
